@@ -11,3 +11,7 @@ build/
 # IDE
 .vscode/
 venv/
+
+# Dev Tool
+build_exe.py
+build.py
