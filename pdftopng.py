@@ -1,8 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
-import pymupdf  # PyMuPDF
-from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageChops
 import os
 import threading
 import datetime
@@ -160,6 +158,9 @@ class SedoConverterApp(TkinterDnD.Tk):
 
     # --- IMAGE PROCESSING ENGINE ---
     def process_image_effects(self, img):
+        # LAZY IMPORT: Only load Image effects when actually processing
+        from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
+
         # 1. Smart Crop
         if self.smart_crop_var.get():
             bg = Image.new(img.mode, img.size, img.getpixel((0,0)))
@@ -201,10 +202,6 @@ class SedoConverterApp(TkinterDnD.Tk):
 
     # --- HELPER: PAGE RANGE PARSER ---
     def parse_page_indices(self, range_str, total_pages):
-        """
-        Parses strings like "1-5, 8, 11-13" into a list of 0-based indices.
-        Returns all pages if input is 'All' or empty.
-        """
         clean_str = range_str.strip().lower()
         if not clean_str or clean_str == "all":
             return list(range(total_pages))
@@ -215,18 +212,15 @@ class SedoConverterApp(TkinterDnD.Tk):
         for part in parts:
             part = part.strip()
             if '-' in part:
-                # Handle range like 3-5
                 try:
                     start, end = map(int, part.split('-'))
-                    # Clamp to valid range (1-based input converted to 0-based index)
                     start_idx = max(0, start - 1)
                     end_idx = min(total_pages, end)
                     if start_idx < end_idx:
                         indices.update(range(start_idx, end_idx))
                 except ValueError:
-                    continue # Skip invalid chunks
+                    continue 
             else:
-                # Handle single number like 7
                 try:
                     p = int(part)
                     if 1 <= p <= total_pages:
@@ -276,6 +270,11 @@ class SedoConverterApp(TkinterDnD.Tk):
         threading.Thread(target=self.process_files, args=(out,), daemon=True).start()
 
     def process_files(self, output_folder):
+        # LAZY IMPORT: Load Heavy PDF/Image libraries ONLY when processing starts
+        # This prevents the "Slow Startup" issue.
+        import pymupdf
+        from PIL import Image
+
         total_files = len(self.files_map)
         dpi = self.dpi_var.get()
         fmt = self.output_format_var.get()
@@ -283,8 +282,6 @@ class SedoConverterApp(TkinterDnD.Tk):
         extract_txt = self.extract_text_var.get()
         transparent = self.transparent_var.get()
         
-        # Parse range string once or per file? Usually user wants same logic per batch, 
-        # but max pages differs per PDF. Logic handles per PDF.
         range_input = self.page_range_var.get()
 
         for idx in range(total_files):
@@ -302,13 +299,11 @@ class SedoConverterApp(TkinterDnD.Tk):
                 
                 doc = pymupdf.open(pdf_path)
                 
-                # --- DETERMINE PAGES TO PROCESS ---
                 pages_to_process = self.parse_page_indices(range_input, doc.page_count)
                 
                 images_list = []
                 full_text = []
 
-                # Loop through specific indices instead of all pages
                 for i in pages_to_process:
                     page = doc[i]
                     
@@ -324,20 +319,20 @@ class SedoConverterApp(TkinterDnD.Tk):
                         background.paste(img, mask=img.split()[3])
                         img = background
 
-                    # --- APPLY EFFECTS ---
                     img = self.process_image_effects(img)
 
                     if stitch:
                         images_list.append(img)
                     else:
                         ext = "png" if fmt == "PNG" else "jpg"
-                        # Filename includes original page number (i+1)
                         img.save(os.path.join(save_dir, f"Page_{i+1}.{ext}"), quality=95)
 
                 if stitch and images_list:
                     total_height = sum(img.height for img in images_list)
                     max_width = max(img.width for img in images_list)
-                    stitched_img = Image.new("RGB", (max_width, total_height), (0,0,0) if self.night_mode_var.get() else (255,255,255))
+                    # We need to check night mode again for the background
+                    bg_col = (0,0,0) if self.night_mode_var.get() else (255,255,255)
+                    stitched_img = Image.new("RGB", (max_width, total_height), bg_col)
                     y_offset = 0
                     for img in images_list:
                         x_offset = (max_width - img.width) // 2
