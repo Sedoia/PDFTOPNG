@@ -37,10 +37,11 @@ class SedoConverterApp(TkinterDnD.Tk):
         self.extract_text_var = tk.BooleanVar(value=False)
         self.transparent_var = tk.BooleanVar(value=False)
         
-        # NEW EFFECTS VARIABLES
+        # NEW EFFECTS & PRIVACY VARIABLES
         self.night_mode_var = tk.BooleanVar(value=False)
         self.smart_crop_var = tk.BooleanVar(value=False)
         self.watermark_text_var = tk.StringVar(value="")
+        self.strip_metadata_var = tk.BooleanVar(value=True) # Defaulted to True for privacy
         
         self.output_format_var = tk.StringVar(value="PNG")
         self.dpi_var = tk.IntVar(value=300)
@@ -96,7 +97,6 @@ class SedoConverterApp(TkinterDnD.Tk):
         tk.Label(p1, text="Pages:", bg=PANEL_BG, fg="#aaaaaa", font=("Segoe UI", 8)).pack(side="left", padx=(10, 5))
         pages_entry = tk.Entry(p1, textvariable=self.page_range_var, width=8, bg="#333333", fg="white", insertbackground="white", bd=0, font=("Segoe UI", 9))
         pages_entry.pack(side="left")
-        # Tooltip-ish help
         self.create_tooltip(pages_entry, "Examples: 'All', '1-5', '1,3,5', '1-3, 10'")
 
         # PANEL 2: EFFECTS STUDIO
@@ -119,6 +119,7 @@ class SedoConverterApp(TkinterDnD.Tk):
         
         self.create_toggle(p3, "Extract Text (.txt)", self.extract_text_var)
         self.create_toggle(p3, "Transparent BG", self.transparent_var)
+        self.create_toggle(p3, "Strip Image Metadata (Privacy)", self.strip_metadata_var)
         
         tk.Checkbutton(p3, text="Secure Shred Original", variable=self.delete_original_var, 
                        bg=PANEL_BG, fg="#ff5555", selectcolor=PANEL_BG, activebackground=PANEL_BG, activeforeground="#ff5555").pack(anchor="w", pady=(5,0))
@@ -158,7 +159,6 @@ class SedoConverterApp(TkinterDnD.Tk):
 
     # --- IMAGE PROCESSING ENGINE ---
     def process_image_effects(self, img):
-        # LAZY IMPORT: Only load Image effects when actually processing
         from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
         # 1. Smart Crop
@@ -185,17 +185,13 @@ class SedoConverterApp(TkinterDnD.Tk):
         wm_text = self.watermark_text_var.get()
         if wm_text:
             draw = ImageDraw.Draw(img)
-            # Dynamic font size based on image width
             fontsize = int(img.width / 20)
             try:
-                # Try loading a system font, fallback to default
                 font = ImageFont.truetype("arial.ttf", fontsize)
             except:
                 font = ImageFont.load_default()
             
-            # Simple color choice
             wm_color = (255, 0, 0) if not self.night_mode_var.get() else (0, 255, 255)
-            # Draw approx center-bottom
             draw.text((img.width * 0.5, img.height * 0.9), wm_text, fill=wm_color, font=font, anchor="mm")
 
         return img
@@ -270,8 +266,6 @@ class SedoConverterApp(TkinterDnD.Tk):
         threading.Thread(target=self.process_files, args=(out,), daemon=True).start()
 
     def process_files(self, output_folder):
-        # LAZY IMPORT: Load Heavy PDF/Image libraries ONLY when processing starts
-        # This prevents the "Slow Startup" issue.
         import pymupdf
         from PIL import Image
 
@@ -281,6 +275,7 @@ class SedoConverterApp(TkinterDnD.Tk):
         stitch = self.stitch_mode_var.get()
         extract_txt = self.extract_text_var.get()
         transparent = self.transparent_var.get()
+        strip_meta = self.strip_metadata_var.get() # Get the privacy toggle status
         
         range_input = self.page_range_var.get()
 
@@ -325,12 +320,19 @@ class SedoConverterApp(TkinterDnD.Tk):
                         images_list.append(img)
                     else:
                         ext = "png" if fmt == "PNG" else "jpg"
-                        img.save(os.path.join(save_dir, f"Page_{i+1}.{ext}"), quality=95)
+                        
+                        # --- PRIVACY SAVE KWARGS ---
+                        save_kwargs = {"quality": 95}
+                        if strip_meta:
+                            img.info = {} # Wipe internal PIL dictionary
+                            if ext == "jpg":
+                                save_kwargs["exif"] = b"" # Force empty EXIF for JPG
+                                
+                        img.save(os.path.join(save_dir, f"Page_{i+1}.{ext}"), **save_kwargs)
 
                 if stitch and images_list:
                     total_height = sum(img.height for img in images_list)
                     max_width = max(img.width for img in images_list)
-                    # We need to check night mode again for the background
                     bg_col = (0,0,0) if self.night_mode_var.get() else (255,255,255)
                     stitched_img = Image.new("RGB", (max_width, total_height), bg_col)
                     y_offset = 0
@@ -338,8 +340,17 @@ class SedoConverterApp(TkinterDnD.Tk):
                         x_offset = (max_width - img.width) // 2
                         stitched_img.paste(img, (x_offset, y_offset))
                         y_offset += img.height
+                    
                     ext = "png" if fmt == "PNG" else "jpg"
-                    stitched_img.save(os.path.join(save_dir, f"{pdf_name}_FULL.{ext}"), quality=90)
+                    
+                    # --- PRIVACY SAVE KWARGS FOR STITCHED IMAGE ---
+                    save_kwargs_stitch = {"quality": 90}
+                    if strip_meta:
+                        stitched_img.info = {}
+                        if ext == "jpg":
+                            save_kwargs_stitch["exif"] = b""
+                            
+                    stitched_img.save(os.path.join(save_dir, f"{pdf_name}_FULL.{ext}"), **save_kwargs_stitch)
 
                 if extract_txt and full_text:
                     with open(os.path.join(save_dir, "Text_Data.txt"), "w", encoding="utf-8") as f:
