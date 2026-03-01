@@ -8,9 +8,9 @@ import platform
 import subprocess
 
 # --- COLORS & THEME ---
-BG_COLOR = "#181818"       # Darker, sleeker black
+BG_COLOR = "#181818"       
 PANEL_BG = "#202020"
-ACCENT_COLOR = "#00d1b2"   # Sedo Teal
+ACCENT_COLOR = "#00d1b2"   
 TEXT_COLOR = "#e0e0e0"     
 LIST_BG = "#252526"        
 
@@ -37,16 +37,14 @@ class SedoConverterApp(TkinterDnD.Tk):
         self.extract_text_var = tk.BooleanVar(value=False)
         self.transparent_var = tk.BooleanVar(value=False)
         
-        # NEW EFFECTS & PRIVACY VARIABLES
+        # EFFECTS & PRIVACY VARIABLES
         self.night_mode_var = tk.BooleanVar(value=False)
         self.smart_crop_var = tk.BooleanVar(value=False)
         self.watermark_text_var = tk.StringVar(value="")
-        self.strip_metadata_var = tk.BooleanVar(value=True) # Defaulted to True for privacy
+        self.strip_metadata_var = tk.BooleanVar(value=True) 
         
         self.output_format_var = tk.StringVar(value="PNG")
         self.dpi_var = tk.IntVar(value=300)
-        
-        # --- NEW PAGE RANGE VARIABLE ---
         self.page_range_var = tk.StringVar(value="All")
 
         self.create_widgets()
@@ -68,7 +66,8 @@ class SedoConverterApp(TkinterDnD.Tk):
 
         self.drop_frame = tk.LabelFrame(left_frame, text="  SOURCE  ", font=("Segoe UI", 8, "bold"), bg=BG_COLOR, fg="#666666", bd=1, relief="solid")
         self.drop_frame.pack(fill="x", pady=5)
-        self.drop_label = tk.Label(self.drop_frame, text="DROP PDFs HERE", font=("Segoe UI", 14, "bold"), bg=BG_COLOR, fg="#444444", pady=30, cursor="hand2")
+        # UPDATED LABEL TEXT
+        self.drop_label = tk.Label(self.drop_frame, text="DROP PDFs OR IMAGES", font=("Segoe UI", 14, "bold"), bg=BG_COLOR, fg="#444444", pady=30, cursor="hand2")
         self.drop_label.pack(fill="both", expand=True)
         self.drop_label.drop_target_register(DND_FILES)
         self.drop_label.dnd_bind('<<Drop>>', self.handle_drop)
@@ -85,15 +84,12 @@ class SedoConverterApp(TkinterDnD.Tk):
         p1 = tk.LabelFrame(right_frame, text="  CORE  ", font=("Segoe UI", 8, "bold"), bg=PANEL_BG, fg="#aaaaaa", bd=0, padx=15, pady=10)
         p1.pack(fill="x", pady=(0, 10))
         
-        # Format
         tk.Label(p1, text="Fmt:", bg=PANEL_BG, fg="#aaaaaa", font=("Segoe UI", 8)).pack(side="left")
         ttk.Combobox(p1, textvariable=self.output_format_var, values=["PNG", "JPG"], state="readonly", width=5).pack(side="left", padx=(5,10))
         
-        # DPI
         tk.Label(p1, text="DPI:", bg=PANEL_BG, fg="#aaaaaa", font=("Segoe UI", 8)).pack(side="left")
         tk.Scale(p1, from_=72, to=400, orient="horizontal", variable=self.dpi_var, bg=PANEL_BG, fg="white", highlightthickness=0, length=80).pack(side="left", padx=5)
 
-        # NEW PAGE RANGE INPUT
         tk.Label(p1, text="Pages:", bg=PANEL_BG, fg="#aaaaaa", font=("Segoe UI", 8)).pack(side="left", padx=(10, 5))
         pages_entry = tk.Entry(p1, textvariable=self.page_range_var, width=8, bg="#333333", fg="white", insertbackground="white", bd=0, font=("Segoe UI", 9))
         pages_entry.pack(side="left")
@@ -103,12 +99,10 @@ class SedoConverterApp(TkinterDnD.Tk):
         p2 = tk.LabelFrame(right_frame, text="  EFFECTS STUDIO  ", font=("Segoe UI", 8, "bold"), bg=PANEL_BG, fg=ACCENT_COLOR, bd=0, padx=15, pady=10)
         p2.pack(fill="x", pady=(0, 10))
 
-        # Toggles
         self.create_toggle(p2, "Night Mode (Invert Colors)", self.night_mode_var)
         self.create_toggle(p2, "Smart Crop (Trim Borders)", self.smart_crop_var)
         self.create_toggle(p2, "Stitch to Long Image", self.stitch_mode_var)
         
-        # Watermark Section
         tk.Label(p2, text="Watermark Text:", bg=PANEL_BG, fg="#aaaaaa", font=("Segoe UI", 8)).pack(anchor="w", pady=(10, 2))
         tk.Entry(p2, textvariable=self.watermark_text_var, bg="#333333", fg="white", insertbackground="white", bd=0).pack(fill="x", pady=(0, 5))
         tk.Label(p2, text="(Leave empty for none)", bg=PANEL_BG, fg="#555555", font=("Segoe UI", 7)).pack(anchor="w")
@@ -150,10 +144,8 @@ class SedoConverterApp(TkinterDnD.Tk):
         tk.Checkbutton(parent, text=text, variable=var, bg=PANEL_BG, fg="white", selectcolor="#444444", activebackground=PANEL_BG, activeforeground="white").pack(anchor="w", pady=2)
 
     def create_tooltip(self, widget, text):
-        def enter(event):
-            self.status_label.config(text=text, fg=ACCENT_COLOR)
-        def leave(event):
-            self.status_label.config(text="Ready.", fg="#666666")
+        def enter(event): self.status_label.config(text=text, fg=ACCENT_COLOR)
+        def leave(event): self.status_label.config(text="Ready.", fg="#666666")
         widget.bind("<Enter>", enter)
         widget.bind("<Leave>", leave)
 
@@ -163,12 +155,13 @@ class SedoConverterApp(TkinterDnD.Tk):
 
         # 1. Smart Crop
         if self.smart_crop_var.get():
-            bg = Image.new(img.mode, img.size, img.getpixel((0,0)))
-            diff = ImageChops.difference(img, bg)
-            diff = ImageChops.add(diff, diff, 2.0, -100)
-            bbox = diff.getbbox()
-            if bbox:
-                img = img.crop(bbox)
+            try:
+                bg = Image.new(img.mode, img.size, img.getpixel((0,0)))
+                diff = ImageChops.difference(img, bg)
+                diff = ImageChops.add(diff, diff, 2.0, -100)
+                bbox = diff.getbbox()
+                if bbox: img = img.crop(bbox)
+            except: pass # Failsafe for complex image modes
 
         # 2. Night Mode (Invert)
         if self.night_mode_var.get():
@@ -186,44 +179,30 @@ class SedoConverterApp(TkinterDnD.Tk):
         if wm_text:
             draw = ImageDraw.Draw(img)
             fontsize = int(img.width / 20)
-            try:
-                font = ImageFont.truetype("arial.ttf", fontsize)
-            except:
-                font = ImageFont.load_default()
+            try: font = ImageFont.truetype("arial.ttf", fontsize)
+            except: font = ImageFont.load_default()
             
             wm_color = (255, 0, 0) if not self.night_mode_var.get() else (0, 255, 255)
             draw.text((img.width * 0.5, img.height * 0.9), wm_text, fill=wm_color, font=font, anchor="mm")
 
         return img
 
-    # --- HELPER: PAGE RANGE PARSER ---
     def parse_page_indices(self, range_str, total_pages):
         clean_str = range_str.strip().lower()
-        if not clean_str or clean_str == "all":
-            return list(range(total_pages))
-        
+        if not clean_str or clean_str == "all": return list(range(total_pages))
         indices = set()
-        parts = clean_str.split(',')
-        
-        for part in parts:
+        for part in clean_str.split(','):
             part = part.strip()
             if '-' in part:
                 try:
                     start, end = map(int, part.split('-'))
-                    start_idx = max(0, start - 1)
-                    end_idx = min(total_pages, end)
-                    if start_idx < end_idx:
-                        indices.update(range(start_idx, end_idx))
-                except ValueError:
-                    continue 
+                    indices.update(range(max(0, start - 1), min(total_pages, end)))
+                except ValueError: continue 
             else:
                 try:
                     p = int(part)
-                    if 1 <= p <= total_pages:
-                        indices.add(p - 1)
-                except ValueError:
-                    continue
-                    
+                    if 1 <= p <= total_pages: indices.add(p - 1)
+                except ValueError: continue
         sorted_indices = sorted(list(indices))
         return sorted_indices if sorted_indices else list(range(total_pages))
 
@@ -232,7 +211,8 @@ class SedoConverterApp(TkinterDnD.Tk):
         self.add_files(self.parse_drop_files(event.data))
 
     def browse_files(self, event=None):
-        files = filedialog.askopenfilenames(filetypes=[("PDF Files", "*.pdf")])
+        # UPDATED: File dialog now accepts PDFs AND Images
+        files = filedialog.askopenfilenames(filetypes=[("Documents & Images", "*.pdf *.png *.jpg *.jpeg"), ("All files", "*.*")])
         if files: self.add_files(files)
 
     def parse_drop_files(self, data):
@@ -242,12 +222,15 @@ class SedoConverterApp(TkinterDnD.Tk):
         return data.split()
 
     def add_files(self, paths):
+        # UPDATED: Allow image extensions in the drop queue
+        valid_extensions = (".pdf", ".png", ".jpg", ".jpeg")
         for path in paths:
             clean_path = path.strip('{}')
-            if os.path.isfile(clean_path) and clean_path.lower().endswith(".pdf"):
+            if os.path.isfile(clean_path) and clean_path.lower().endswith(valid_extensions):
                 if clean_path not in self.files_map.values():
                     idx = self.listbox.size()
-                    self.listbox.insert(tk.END, f" 📄 {os.path.basename(clean_path)}")
+                    icon = " 📄" if clean_path.lower().endswith(".pdf") else " 🖼️"
+                    self.listbox.insert(tk.END, f"{icon} {os.path.basename(clean_path)}")
                     self.files_map[idx] = clean_path
         self.status_label.config(text=f"Queue: {len(self.files_map)} files ready")
 
@@ -275,97 +258,118 @@ class SedoConverterApp(TkinterDnD.Tk):
         stitch = self.stitch_mode_var.get()
         extract_txt = self.extract_text_var.get()
         transparent = self.transparent_var.get()
-        strip_meta = self.strip_metadata_var.get() # Get the privacy toggle status
-        
+        strip_meta = self.strip_metadata_var.get() 
         range_input = self.page_range_var.get()
 
         for idx in range(total_files):
-            pdf_path = self.files_map[idx]
-            pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
+            file_path = self.files_map[idx]
+            file_name, file_ext = os.path.splitext(os.path.basename(file_path))
+            is_pdf = file_ext.lower() == ".pdf"
             
             try:
                 self.listbox.delete(idx)
-                self.listbox.insert(idx, f" ⚙️ {pdf_name}")
-                self.status_label.config(text=f"Processing: {pdf_name}...")
+                self.listbox.insert(idx, f" ⚙️ {file_name}{file_ext}")
+                self.status_label.config(text=f"Processing: {file_name}...")
 
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                save_dir = os.path.join(output_folder, f"{pdf_name}_{timestamp}")
+                save_dir = os.path.join(output_folder, f"{file_name}_{timestamp}")
                 os.makedirs(save_dir, exist_ok=True)
                 
-                doc = pymupdf.open(pdf_path)
-                
-                pages_to_process = self.parse_page_indices(range_input, doc.page_count)
-                
-                images_list = []
-                full_text = []
+                # --- PDF PROCESSING PATH ---
+                if is_pdf:
+                    doc = pymupdf.open(file_path)
+                    pages_to_process = self.parse_page_indices(range_input, doc.page_count)
+                    images_list = []
+                    full_text = []
 
-                for i in pages_to_process:
-                    page = doc[i]
-                    
-                    if extract_txt:
-                        full_text.append(f"--- P{i+1} ---\n{page.get_text()}\n")
+                    for i in pages_to_process:
+                        page = doc[i]
+                        if extract_txt: full_text.append(f"--- P{i+1} ---\n{page.get_text()}\n")
 
-                    pix = page.get_pixmap(dpi=dpi, alpha=transparent, annots=True)
-                    mode = "RGBA" if transparent else "RGB"
-                    img = Image.frombytes("RGBA" if pix.alpha else "RGB", [pix.width, pix.height], pix.samples)
+                        pix = page.get_pixmap(dpi=dpi, alpha=transparent, annots=True)
+                        mode = "RGBA" if transparent else "RGB"
+                        img = Image.frombytes("RGBA" if pix.alpha else "RGB", [pix.width, pix.height], pix.samples)
+                        
+                        if not transparent and mode == "RGBA":
+                            background = Image.new("RGB", img.size, (255, 255, 255))
+                            background.paste(img, mask=img.split()[3])
+                            img = background
+
+                        img = self.process_image_effects(img)
+
+                        if stitch:
+                            images_list.append(img)
+                        else:
+                            ext = "png" if fmt == "PNG" else "jpg"
+                            save_kwargs = {"quality": 95}
+                            if strip_meta:
+                                img.info = {} 
+                                if ext == "jpg": save_kwargs["exif"] = b"" 
+                            img.save(os.path.join(save_dir, f"Page_{i+1}.{ext}"), **save_kwargs)
+
+                    if stitch and images_list:
+                        total_height = sum(img.height for img in images_list)
+                        max_width = max(img.width for img in images_list)
+                        bg_col = (0,0,0) if self.night_mode_var.get() else (255,255,255)
+                        stitched_img = Image.new("RGB", (max_width, total_height), bg_col)
+                        y_offset = 0
+                        for img in images_list:
+                            x_offset = (max_width - img.width) // 2
+                            stitched_img.paste(img, (x_offset, y_offset))
+                            y_offset += img.height
+                        
+                        ext = "png" if fmt == "PNG" else "jpg"
+                        save_kwargs_stitch = {"quality": 90}
+                        if strip_meta:
+                            stitched_img.info = {}
+                            if ext == "jpg": save_kwargs_stitch["exif"] = b""
+                        stitched_img.save(os.path.join(save_dir, f"{file_name}_FULL.{ext}"), **save_kwargs_stitch)
+
+                    if extract_txt and full_text:
+                        with open(os.path.join(save_dir, "Text_Data.txt"), "w", encoding="utf-8") as f:
+                            f.write("\n".join(full_text))
+
+                    doc.close()
+                
+                # --- DIRECT IMAGE PROCESSING PATH ---
+                else:
+                    img = Image.open(file_path)
                     
-                    if not transparent and mode == "RGBA":
+                    # Convert to RGBA so effects apply smoothly
+                    if img.mode != 'RGBA':
+                        img = img.convert('RGBA')
+
+                    # Handle Transparency Toggle for raw images
+                    if not transparent:
                         background = Image.new("RGB", img.size, (255, 255, 255))
                         background.paste(img, mask=img.split()[3])
                         img = background
-
+                    
+                    # Apply god mode effects
                     img = self.process_image_effects(img)
-
-                    if stitch:
-                        images_list.append(img)
-                    else:
-                        ext = "png" if fmt == "PNG" else "jpg"
-                        
-                        # --- PRIVACY SAVE KWARGS ---
-                        save_kwargs = {"quality": 95}
-                        if strip_meta:
-                            img.info = {} # Wipe internal PIL dictionary
-                            if ext == "jpg":
-                                save_kwargs["exif"] = b"" # Force empty EXIF for JPG
-                                
-                        img.save(os.path.join(save_dir, f"Page_{i+1}.{ext}"), **save_kwargs)
-
-                if stitch and images_list:
-                    total_height = sum(img.height for img in images_list)
-                    max_width = max(img.width for img in images_list)
-                    bg_col = (0,0,0) if self.night_mode_var.get() else (255,255,255)
-                    stitched_img = Image.new("RGB", (max_width, total_height), bg_col)
-                    y_offset = 0
-                    for img in images_list:
-                        x_offset = (max_width - img.width) // 2
-                        stitched_img.paste(img, (x_offset, y_offset))
-                        y_offset += img.height
                     
+                    # Save with Privacy Scrub
                     ext = "png" if fmt == "PNG" else "jpg"
-                    
-                    # --- PRIVACY SAVE KWARGS FOR STITCHED IMAGE ---
-                    save_kwargs_stitch = {"quality": 90}
+                    if ext == "jpg" and img.mode in ("RGBA", "P"): 
+                        img = img.convert("RGB") # JPGs can't have transparency
+
+                    save_kwargs_img = {"quality": 95}
                     if strip_meta:
-                        stitched_img.info = {}
-                        if ext == "jpg":
-                            save_kwargs_stitch["exif"] = b""
-                            
-                    stitched_img.save(os.path.join(save_dir, f"{pdf_name}_FULL.{ext}"), **save_kwargs_stitch)
+                        img.info = {}
+                        if ext == "jpg": save_kwargs_img["exif"] = b""
+                    
+                    img.save(os.path.join(save_dir, f"{file_name}{ext}"), **save_kwargs_img)
 
-                if extract_txt and full_text:
-                    with open(os.path.join(save_dir, "Text_Data.txt"), "w", encoding="utf-8") as f:
-                        f.write("\n".join(full_text))
-
-                doc.close()
-                if self.delete_original_var.get(): self.secure_shred(pdf_path)
+                # Delete original file if selected
+                if self.delete_original_var.get(): self.secure_shred(file_path)
 
                 self.listbox.delete(idx)
-                self.listbox.insert(idx, f" ✅ {pdf_name}")
+                self.listbox.insert(idx, f" ✅ {file_name}")
 
             except Exception as e:
                 print(e)
                 self.listbox.delete(idx)
-                self.listbox.insert(idx, f" ❌ {pdf_name}")
+                self.listbox.insert(idx, f" ❌ {file_name}")
 
             self.progress_var.set(((idx + 1) / total_files) * 100)
 
